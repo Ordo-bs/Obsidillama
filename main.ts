@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, TFile } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
@@ -13,12 +13,16 @@ interface ChatPluginSettings {
 	chatHistory: ChatMessage[];
 	maxHistory: number;
 	llamaEndpoint: string;
+	includeContext: boolean;
+	contextPrompt: string;
 }
 
 const DEFAULT_SETTINGS: ChatPluginSettings = {
 	chatHistory: [],
 	maxHistory: 100,
-	llamaEndpoint: 'http://localhost:11434/api/generate'
+	llamaEndpoint: 'http://localhost:11434/api/generate',
+	includeContext: true,
+	contextPrompt: "Consider the following note content as context for your response:\n\n{context}\n\nNow answer the following question:\n{prompt}"
 }
 
 const VIEW_TYPE_CHAT = "chat-view";
@@ -76,6 +80,50 @@ class ChatView extends ItemView {
 		});
 	}
 
+	private async getCurrentNoteContent(): Promise<string | null> {
+		// Try getting the active view first
+		let activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		
+		// If no active view, try getting the last visible leaf with a markdown view
+		if (!activeView) {
+			this.plugin.log('No active Markdown view found, checking visible leaves');
+			const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
+			if (markdownLeaves.length > 0) {
+				const lastMarkdownLeaf = markdownLeaves[markdownLeaves.length - 1];
+				if (lastMarkdownLeaf.view instanceof MarkdownView) {
+					activeView = lastMarkdownLeaf.view;
+					this.plugin.log('Found Markdown view in visible leaves');
+				} else {
+					this.plugin.log('No Markdown view found in visible leaves');
+				}
+			} else {
+				this.plugin.log('No Markdown leaves found in workspace');
+			}
+		} else {
+			this.plugin.log('Found active Markdown view');
+		}
+
+		if (!activeView) {
+			new Notice('Please open a note to use as context');
+			return null;
+		}
+
+		const file = activeView.file;
+		if (!file) {
+			this.plugin.log('No file associated with the Markdown view');
+			return null;
+		}
+
+		try {
+			const content = await this.app.vault.read(file);
+			this.plugin.log('Retrieved note content from:', file.path);
+			return content;
+		} catch (error) {
+			this.plugin.log('Error reading file:', error);
+			return null;
+		}
+	}
+
 	private async handleSendMessage(): Promise<void> {
 		if (this.isGenerating) {
 			new Notice('Please wait for the current response to complete');
@@ -97,7 +145,26 @@ class ChatView extends ItemView {
 		this.isGenerating = true;
 		
 		try {
-			const response = await this.getLLAMAResponse(content);
+			let finalPrompt = content;
+			
+			// Include current note content as context if enabled
+			if (this.plugin.settings.includeContext) {
+				this.plugin.log('Attempting to get note content for context');
+				const noteContent = await this.getCurrentNoteContent();
+				if (noteContent) {
+					this.plugin.log('Using note content as context');
+					finalPrompt = this.plugin.settings.contextPrompt
+						.replace('{context}', noteContent)
+						.replace('{prompt}', content);
+					this.plugin.log('Final prompt with context:', finalPrompt);
+				} else {
+					this.plugin.log('No note content available for context');
+				}
+			} else {
+				this.plugin.log('Context inclusion is disabled in settings');
+			}
+
+			const response = await this.getLLAMAResponse(finalPrompt);
 			const assistantMessage: ChatMessage = {
 				id: Date.now().toString(),
 				content: response,
@@ -106,7 +173,7 @@ class ChatView extends ItemView {
 			};
 			this.addMessage(assistantMessage);
 		} catch (error) {
-			console.error('Error getting response from LLAMA:', error);
+			this.plugin.log('Error getting response from LLAMA:', error);
 			new Notice('Error getting response from LLAMA: ' + error);
 		} finally {
 			this.isGenerating = false;
@@ -115,6 +182,7 @@ class ChatView extends ItemView {
 
 	private async getLLAMAResponse(prompt: string): Promise<string> {
 		try {
+			this.plugin.log('Sending request to LLAMA with prompt:', prompt);
 			const response = await fetch(this.plugin.settings.llamaEndpoint, {
 				method: 'POST',
 				headers: {
@@ -132,9 +200,10 @@ class ChatView extends ItemView {
 			}
 
 			const data = await response.json();
+			this.plugin.log('Received response from LLAMA:', data);
 			return data.response;
 		} catch (error) {
-			console.error('Error calling LLAMA:', error);
+			this.plugin.log('Error calling LLAMA:', error);
 			throw error;
 		}
 	}
@@ -201,6 +270,10 @@ export default class ChatPlugin extends Plugin {
 		this.addSettingTab(new ChatSettingsTab(this.app, this));
 	}
 
+	log(...args: any[]) {
+		console.log('[Obsidillama]', ...args);
+	}
+
 	private async activateView() {
 		const { workspace } = this.app;
 		let leaf: WorkspaceLeaf | null = null;
@@ -265,6 +338,27 @@ class ChatSettingsTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.llamaEndpoint)
 				.onChange(async (value) => {
 					this.plugin.settings.llamaEndpoint = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Include Note Context')
+			.setDesc('Include the current note content as context for LLAMA')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeContext)
+				.onChange(async (value) => {
+					this.plugin.settings.includeContext = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Context Prompt Template')
+			.setDesc('Template for how to include context in the prompt. Use {context} for note content and {prompt} for user message.')
+			.addTextArea(text => text
+				.setPlaceholder(DEFAULT_SETTINGS.contextPrompt)
+				.setValue(this.plugin.settings.contextPrompt)
+				.onChange(async (value) => {
+					this.plugin.settings.contextPrompt = value;
 					await this.plugin.saveSettings();
 				}));
 	}
