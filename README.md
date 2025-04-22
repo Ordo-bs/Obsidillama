@@ -1,94 +1,120 @@
-# Obsidian Sample Plugin
+# Obsidian LLAMA Chat Plugin
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+This plugin integrates a local LLAMA language model with Obsidian, providing an AI chat interface directly within your Obsidian workspace.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Prerequisites
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+1. [Obsidian](https://obsidian.md/) installed on your computer
+2. [Ollama](https://ollama.ai/) installed on your computer
 
-## First time developing plugins?
+## Installation Steps
 
-Quick starting guide for new plugin devs:
+### 1. Install Ollama
+1. Download Ollama from [https://ollama.ai/](https://ollama.ai/)
+2. Run the installer
+3. Follow the installation prompts
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+### 2. Set Up LLAMA Model
+1. Open PowerShell or Command Prompt
+2. Pull the LLAMA model by running:
+   ```bash
+   ollama pull llama2
+   ```
+3. Wait for the download to complete (this may take a while depending on your internet connection)
 
-## Releasing new releases
+### 3. Start the LLAMA Server
+1. The Ollama service should start automatically after installation
+2. If it's not running, you can start it manually:
+   - Windows: Run Ollama from the Start menu
+   - Or open PowerShell and run:
+     ```bash
+     ollama serve
+     ```
+3. Verify the server is running by executing:
+   ```bash
+   ollama list
+   ```
+   You should see `llama2` in the list of models.
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+### 4. Install the Plugin in Obsidian
+1. Open Obsidian
+2. Go to Settings → Community plugins
+3. Turn off Safe mode if it's enabled
+4. Browse for "LLAMA Chat" and install it
+5. Enable the plugin
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+## Using the Plugin
 
-## Adding your plugin to the community plugin list
+1. Click the chat icon in the left ribbon (looks like a message bubble)
+   - Alternatively, use the command palette (Ctrl/Cmd + P) and search for "Open Chat"
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+2. The chat interface will open in the right sidebar
 
-## How to use
+3. Type your message in the input box and:
+   - Press Enter to send
+   - Or click the Send button
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+4. Wait for LLAMA to generate a response
+   - You'll see a notification if there are any connection issues
+   - The response will appear in the chat when ready
 
-## Manually installing the plugin
+5. Features:
+   - Copy button for each AI response
+   - Timestamp for each message
+   - Message history (configurable in settings)
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Configuration
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
+You can configure the plugin in Obsidian's settings:
 
-## Funding URL
+1. Go to Settings → Plugin Options → LLAMA Chat
+2. Available settings:
+   - Maximum History: Number of messages to keep in history (10-1000)
+   - LLAMA Endpoint: URL of the local LLAMA API (default: http://localhost:11434/api/generate)
 
-You can include funding URLs where people who use your plugin can financially support it.
+## Troubleshooting
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+### LLAMA Not Responding
+1. Check if Ollama is running:
+   ```bash
+   netstat -ano | findstr :11434
+   ```
+   Should show a process listening on port 11434
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+2. Verify the model is installed:
+   ```bash
+   ollama list
+   ```
+   Should show `llama2` in the list
 
-If you have multiple URLs, you can also do:
+3. Test the LLAMA API directly:
+   ```bash
+   curl http://localhost:11434/api/generate -X POST -H "Content-Type: application/json" -d "{\"model\": \"llama2\", \"prompt\": \"hello\", \"stream\": false}"
+   ```
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+### Common Issues
 
-## API Documentation
+1. "Error: listen tcp 127.0.0.1:11434: bind: Only one usage of each socket address..."
+   - This means Ollama is already running
+   - No action needed, the server is ready to use
 
-See https://github.com/obsidianmd/obsidian-api
+2. "Error getting response from LLAMA"
+   - Check if Ollama is running
+   - Verify the LLAMA endpoint in plugin settings
+   - Make sure the llama2 model is installed
+
+3. No response from LLAMA
+   - Check your internet connection
+   - Restart Ollama service
+   - Verify the model installation
+
+## Support
+
+If you encounter any issues or have questions:
+1. Check the Troubleshooting section above
+2. Visit the [GitHub repository](link-to-your-repo)
+3. Submit an issue on GitHub
+
+## License
+
+GNU General Public License v3.0 - see LICENSE file for details. This is free software, and you are welcome to redistribute it under certain conditions.
