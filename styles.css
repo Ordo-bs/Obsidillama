@@ -13,6 +13,7 @@ If your plugin does not need CSS, delete this file.
     height: 100%;
     padding: 10px;
     box-sizing: border-box;
+    user-select: text;
 }
 
 .messages-container {
@@ -23,6 +24,7 @@ If your plugin does not need CSS, delete this file.
     display: flex;
     flex-direction: column;
     gap: 10px;
+    user-select: text;
 }
 
 .message {
@@ -30,6 +32,7 @@ If your plugin does not need CSS, delete this file.
     padding: 10px;
     border-radius: 10px;
     position: relative;
+    user-select: text;
 }
 
 .message.user {
@@ -49,31 +52,66 @@ If your plugin does not need CSS, delete this file.
     justify-content: space-between;
     align-items: center;
     margin-bottom: 5px;
+    user-select: none;
+}
+
+.message.assistant .message-header {
+    flex-direction: row;
+}
+
+.message.user .message-header {
+    flex-direction: row-reverse;
 }
 
 .message-content {
     word-wrap: break-word;
     white-space: pre-wrap;
+    cursor: text;
+    user-select: text;
 }
 
 .message-timestamp {
     font-size: 0.8em;
     opacity: 0.7;
+    user-select: none;
 }
 
 .copy-button {
-    padding: 2px 8px;
-    font-size: 0.8em;
-    background-color: var(--background-primary);
-    color: var(--text-normal);
-    border: 1px solid var(--background-modifier-border);
+    padding: 4px;
+    background-color: transparent;
+    color: var(--text-muted);
+    border: none;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.message.user .copy-button {
+    color: var(--text-on-accent);
+    opacity: 1;
+    background-color: var(--interactive-accent-hover);
 }
 
 .copy-button:hover {
     background-color: var(--background-modifier-hover);
+    opacity: 1;
+    color: var(--text-normal);
+}
+
+.message.user .copy-button:hover {
+    background-color: transparent;
+    opacity: 0.7;
+}
+
+.copy-button svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
 }
 
 .input-container {

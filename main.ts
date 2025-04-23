@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, TFile, setIcon } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
@@ -220,21 +220,28 @@ class ChatView extends ItemView {
 		const timestampEl = messageHeader.createDiv('message-timestamp');
 		timestampEl.setText(new Date(message.timestamp).toLocaleTimeString());
 
-		// Add copy button for assistant messages
-		if (message.sender === 'assistant') {
-			const copyButton = messageHeader.createEl('button', {
-				cls: 'copy-button',
-				text: 'Copy'
+		// Add copy button for all messages
+		const copyButton = messageHeader.createEl('button', {
+			cls: 'copy-button'
+		});
+		
+		setIcon(copyButton, 'documents');
+		
+		copyButton.addEventListener('click', () => {
+			navigator.clipboard.writeText(message.content).then(() => {
+				setIcon(copyButton, 'check');
+				setTimeout(() => {
+					setIcon(copyButton, 'documents');
+				}, 1000);
+				new Notice('Message copied to clipboard!');
+			}).catch(err => {
+				setIcon(copyButton, 'x');
+				setTimeout(() => {
+					setIcon(copyButton, 'documents');
+				}, 1000);
+				new Notice('Failed to copy message: ' + err);
 			});
-			
-			copyButton.addEventListener('click', () => {
-				navigator.clipboard.writeText(message.content).then(() => {
-					new Notice('Message copied to clipboard!');
-				}).catch(err => {
-					new Notice('Failed to copy message: ' + err);
-				});
-			});
-		}
+		});
 		
 		this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
 	}
