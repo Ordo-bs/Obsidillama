@@ -81,42 +81,48 @@ class ChatView extends ItemView {
 	}
 
 	private async getCurrentNoteContent(): Promise<string | null> {
-		// Try getting the active view first
-		let activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		
-		// If no active view, try getting the last visible leaf with a markdown view
-		if (!activeView) {
-			this.plugin.log('No active Markdown view found, checking visible leaves');
-			const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
-			if (markdownLeaves.length > 0) {
-				const lastMarkdownLeaf = markdownLeaves[markdownLeaves.length - 1];
-				if (lastMarkdownLeaf.view instanceof MarkdownView) {
-					activeView = lastMarkdownLeaf.view;
-					this.plugin.log('Found Markdown view in visible leaves');
-				} else {
-					this.plugin.log('No Markdown view found in visible leaves');
-				}
-			} else {
-				this.plugin.log('No Markdown leaves found in workspace');
-			}
-		} else {
-			this.plugin.log('Found active Markdown view');
-		}
+		// Get all markdown leaves directly
+		const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
+		this.plugin.log('Found ' + markdownLeaves.length + ' markdown notes in workspace');
 
-		if (!activeView) {
+		if (markdownLeaves.length === 0) {
 			new Notice('Please open a note to use as context');
 			return null;
 		}
 
-		const file = activeView.file;
+		// Initialize with the last leaf as default
+		let selectedLeaf = markdownLeaves[markdownLeaves.length - 1];
+
+		// If multiple notes are open, try to find the most relevant one
+		if (markdownLeaves.length > 1) {
+			// Try to find a note that's in source mode (being edited)
+			const sourceLeaf = markdownLeaves.find(leaf => 
+				leaf.view instanceof MarkdownView && 
+				(leaf.view as MarkdownView).getMode() === 'source');
+			
+			if (sourceLeaf) {
+				selectedLeaf = sourceLeaf;
+				this.plugin.log('Found note in source mode, using it for context');
+			}
+		}
+
+		// Ensure the selected leaf has a markdown view
+		if (!(selectedLeaf.view instanceof MarkdownView)) {
+			this.plugin.log('Selected leaf is not a markdown view');
+			return null;
+		}
+
+		const view = selectedLeaf.view as MarkdownView;
+		const file = view.file;
+
 		if (!file) {
-			this.plugin.log('No file associated with the Markdown view');
+			this.plugin.log('No file associated with the selected markdown view');
 			return null;
 		}
 
 		try {
 			const content = await this.app.vault.read(file);
-			this.plugin.log('Retrieved note content from:', file.path);
+			this.plugin.log('Using note for context:', file.path);
 			return content;
 		} catch (error) {
 			this.plugin.log('Error reading file:', error);
